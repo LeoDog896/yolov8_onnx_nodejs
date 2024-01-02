@@ -1,8 +1,8 @@
-const ort = require("onnxruntime-node");
-const express = require('express');
-const multer = require("multer");
-const sharp = require("sharp");
-const fs = require("fs");
+import ort from "onnxruntime-node";
+import express from 'express';
+import multer from "multer";
+import sharp from "sharp";
+import fs from "fs";
 
 /**
  * Main function that setups and starts a

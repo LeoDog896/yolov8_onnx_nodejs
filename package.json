@@ -1,10 +1,9 @@
 {
-  "name": "object_detector",
-  "version": "1.0.0",
-  "description": "",
+  "name": "object-detector",
+  "private": true,
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "tsx objectDetector.ts"
   },
   "author": "",
   "license": "ISC",
@@ -13,5 +12,8 @@
     "multer": "^1.4.5-lts.1",
     "onnxruntime-node": "^1.14.0",
     "sharp": "^0.32.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
   }
 }
