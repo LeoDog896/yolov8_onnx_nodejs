@@ -62,8 +62,7 @@ async function detect_objects_on_image(buf: Buffer) {
  */
 async function prepare_input(buf: Buffer): Promise<[number[], number, number]> {
   const img = sharp(buf);
-  const md = await img.metadata();
-  const [imgWidth, imgHeight] = [md.width, md.height];
+  const { width: imgWidth, height: imgHeight } = await img.metadata();
 
   if (!imgWidth || !imgHeight) {
     throw new Error("Cannot read image metadata");
