@@ -7,9 +7,9 @@ This is a source code for a ["How to create YOLOv8-based object detection web se
 
 ## Install
 
-* Clone this repository: `git clone git@github.com:AndreyGermanov/yolov8_onnx_nodejs.git`
-* Go to the root of cloned repository
-* Install dependencies by running `npm install`
+- Clone this repository: `git clone git@github.com:AndreyGermanov/yolov8_onnx_nodejs.git`
+- Go to the root of cloned repository
+- Install dependencies by running `npm install`
 
 ## Run
 
