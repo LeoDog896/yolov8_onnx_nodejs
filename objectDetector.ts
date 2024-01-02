@@ -1,8 +1,10 @@
 import express from "express";
-import fs from "fs";
+import fs from "node:fs";
 import multer from "multer";
 import ort from "onnxruntime-node";
 import sharp from "sharp";
+
+type Box = [number, number, number, number, string, number];
 
 /**
  * Main function that setups and starts a
@@ -25,6 +27,11 @@ function main() {
    * an array of bounding boxes in format [[x1,y1,x2,y2,object_type,probability],..] as a JSON
    */
   app.post("/detect", upload.single("image_file"), async function(req, res) {
+    if (!req.file) {
+        res.status(400).send("No file uploaded.");
+        return;
+    }
+
     const boxes = await detect_objects_on_image(req.file.buffer);
     res.json(boxes);
   });
@@ -40,7 +47,7 @@ function main() {
  * @param buf Input image body
  * @returns Array of bounding boxes in format [[x1,y1,x2,y2,object_type,probability],..]
  */
-async function detect_objects_on_image(buf) {
+async function detect_objects_on_image(buf: Buffer) {
   const [input, img_width, img_height] = await prepare_input(buf);
   const output = await run_model(input);
   return process_output(output, img_width, img_height);
@@ -53,22 +60,27 @@ async function detect_objects_on_image(buf) {
  * @param buf Content of uploaded file
  * @returns Array of pixels
  */
-async function prepare_input(buf) {
+async function prepare_input(buf: Buffer): Promise<[number[], number, number]> {
   const img = sharp(buf);
   const md = await img.metadata();
-  const [img_width, img_height] = [md.width, md.height];
+  const [imgWidth, imgHeight] = [md.width, md.height];
+
+  if (!imgWidth || !imgHeight) {
+    throw new Error("Cannot read image metadata");
+  }
+
   const pixels = await img.removeAlpha()
     .resize({ width: 640, height: 640, fit: "fill" })
     .raw()
     .toBuffer();
-  const red = [], green = [], blue = [];
+  const red: number[] = [], green: number[] = [], blue: number[] = [];
   for (let index = 0; index < pixels.length; index += 3) {
     red.push(pixels[index] / 255.0);
     green.push(pixels[index + 1] / 255.0);
     blue.push(pixels[index + 2] / 255.0);
   }
   const input = [...red, ...green, ...blue];
-  return [input, img_width, img_height];
+  return [input, imgWidth, imgHeight];
 }
 
 /**
@@ -76,7 +88,7 @@ async function prepare_input(buf) {
  * @param input Input pixels array
  * @returns Raw output of neural network as a flat array of numbers
  */
-async function run_model(input) {
+async function run_model(input: number[]) {
   const model = await ort.InferenceSession.create("yolov8m.onnx");
   input = new ort.Tensor(Float32Array.from(input), [1, 3, 640, 640]);
   const outputs = await model.run({ images: input });
@@ -91,12 +103,12 @@ async function run_model(input) {
  * @param img_height Height of original image
  * @returns Array of detected objects in a format [[x1,y1,x2,y2,object_type,probability],..]
  */
-function process_output(output, img_width, img_height) {
-  let boxes = [];
+function process_output(output, img_width: number, img_height: number) {
+  let boxes: Box[] = [];
   for (let index = 0; index < 8400; index++) {
     const [class_id, prob] = [...Array(80).keys()]
       .map(col => [col, output[8400 * (col + 4) + index]])
-      .reduce((accum, item) => item[1] > accum[1] ? item : accum, [0, 0]);
+      .reduce((accumulator, item) => item[1] > accumulator[1] ? item : accumulator, [0, 0]);
     if (prob < 0.5) {
       continue;
     }
@@ -113,7 +125,7 @@ function process_output(output, img_width, img_height) {
   }
 
   boxes = boxes.sort((box1, box2) => box2[5] - box1[5]);
-  const result = [];
+  const result: Box[] = [];
   while (boxes.length > 0) {
     result.push(boxes[0]);
     boxes = boxes.filter(box => iou(boxes[0], box) < 0.7);
@@ -128,7 +140,7 @@ function process_output(output, img_width, img_height) {
  * @param box2 Second box in format: [x1,y1,x2,y2,object_class,probability]
  * @returns Intersection over union ratio as a float number
  */
-function iou(box1, box2) {
+function iou(box1: Box, box2: Box) {
   return intersection(box1, box2) / union(box1, box2);
 }
 
@@ -141,7 +153,7 @@ function iou(box1, box2) {
  * @param box2 Second box in format [x1,y1,x2,y2,object_class,probability]
  * @returns Area of the boxes union as a float number
  */
-function union(box1, box2) {
+function union(box1: Box, box2: Box) {
   const [box1_x1, box1_y1, box1_x2, box1_y2] = box1;
   const [box2_x1, box2_y1, box2_x2, box2_y2] = box2;
   const box1_area = (box1_x2 - box1_x1) * (box1_y2 - box1_y1);
@@ -155,7 +167,7 @@ function union(box1, box2) {
  * @param box2 Second box in format [x1,y1,x2,y2,object_class,probability]
  * @returns Area of intersection of the boxes as a float number
  */
-function intersection(box1, box2) {
+function intersection(box1: Box, box2: Box) {
   const [box1_x1, box1_y1, box1_x2, box1_y2] = box1;
   const [box2_x1, box2_y1, box2_x2, box2_y2] = box2;
   const x1 = Math.max(box1_x1, box2_x1);
